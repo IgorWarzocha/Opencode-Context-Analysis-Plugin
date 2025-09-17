@@ -79,27 +79,19 @@ Breakdown — system 2,341 | user 4,567 | assistant 5,234 | tools 1,890 | reason
 Top contributors: User#3 4,100, Assistant#2 3,200, System#1 2,341
 ```
 
-## Supported Models
+## How It Works
 
-### OpenAI Models
-- GPT-4, GPT-4 Turbo, GPT-4o
-- GPT-3.5 Turbo
-- Text Embedding models
+### Tokenization Engine
 
-### Anthropic Claude
-- Claude 3 (Opus, Sonnet, Haiku)
-- Claude 3.5 (Sonnet, Haiku)
-- Claude 3.7 Sonnet
-- Claude 4 (Opus, Sonnet)
+The plugin uses a sophisticated multi-tier tokenization approach leveraging Hugging Face Transformers:
 
-### Meta Llama
-- Llama 2, 3, 3.1, 3.2, 3.3, 4
-- Code Llama
+**Hugging Face Integration**: The core tokenization is powered by `@huggingface/transformers`, which provides access to the exact tokenizers used by each model family. This ensures accurate token counting that matches what the actual AI models see.
 
-### Other Models
-- Mistral (Large, Small, Nemo)
-- DeepSeek (V2, V3, R1)
-- Google Gemma
+**Model Detection**: The plugin automatically detects the model being used in your session and selects the appropriate tokenizer from Hugging Face Hub or falls back to provider-specific defaults.
+
+**Tiktoken Support**: For OpenAI models, the plugin uses `js-tiktoken` which provides the official OpenAI tokenization compatible with GPT models.
+
+**Smart Fallbacks**: When specific tokenizers aren't available, the plugin uses intelligent fallbacks based on model families and providers, ensuring you always get meaningful token estimates.
 
 ## Technical Details
 
@@ -111,13 +103,25 @@ The plugin consists of:
 - **Plugin Implementation** (`.opencode/plugin/context-usage.ts`): Core TypeScript plugin with tokenization logic
 - **Installation Script** (`install.sh`): Automated dependency installation
 
-### Token Counting
+### Token Counting Strategy
 
-The plugin uses sophisticated tokenization strategies:
+The plugin implements a hierarchical tokenization approach:
 
-1. **Model-Specific Tokenizers**: Uses the exact tokenizer for each model when available
-2. **Provider Fallbacks**: Falls back to provider-default tokenizers
-3. **Approximation**: Uses character-based estimation (÷4) as final fallback
+1. **Exact Model Matching**: Loads the specific tokenizer from Hugging Face Hub that corresponds to your model (e.g., `Xenova/claude-tokenizer` for Claude models, `Xenova/Meta-Llama-3.1-Tokenizer` for Llama)
+
+2. **Provider-Based Fallbacks**: When exact model tokenizers aren't found, falls back to provider defaults (Anthropic → Claude tokenizer, Meta → Llama tokenizer, etc.)
+
+3. **Tiktoken Integration**: OpenAI models use the official `js-tiktoken` library with model-specific encodings (`gpt-4o`, `gpt-3.5-turbo`, etc.)
+
+4. **Character-Based Estimation**: Final fallback uses approximate token counting (text length ÷ 4) when tokenizers fail to load
+
+### Real-Time Analysis
+
+The plugin analyzes your session in real-time by:
+- Extracting all message content by type (system prompts, user input, assistant responses, tool outputs, reasoning traces)
+- Applying the appropriate tokenizer to each content piece
+- Reconciling with actual API token usage when available through OpenCode's telemetry
+- Providing breakdown and identifying the highest token consumers
 
 ### Performance Features
 
