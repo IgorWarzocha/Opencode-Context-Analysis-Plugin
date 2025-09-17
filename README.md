@@ -1,0 +1,173 @@
+# OpenCode Context Analysis Plugin
+
+A powerful OpenCode plugin that provides detailed token usage analysis for your AI sessions. Track and understand how tokens are distributed across system prompts, user messages, assistant responses, tool outputs, and reasoning traces.
+
+## Features
+
+- **Comprehensive Token Analysis**: Breakdown of token usage across different message types
+- **Multi-Model Support**: Compatible with OpenAI, Anthropic Claude, Llama, Mistral, DeepSeek and more
+- **Real-time Session Monitoring**: Analyze current session context and token distribution
+- **Intelligent Tokenization**: Uses model-specific tokenizers for accurate counting
+- **Top Contributors Identification**: Quickly identify which parts of your session consume the most tokens
+
+## Installation
+
+### Quick Setup
+
+1. **Copy Plugin Files**
+   ```bash
+   cp -r .opencode /path/to/your/opencode/project/
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   bash install.sh /path/to/your/opencode/project
+   ```
+
+   Or install to current directory:
+   ```bash
+   bash install.sh .
+   ```
+
+3. **Restart OpenCode** and the `/context` command will be available
+
+### Manual Installation
+
+If you prefer manual setup:
+
+1. Copy the `.opencode` directory to your OpenCode project root
+2. Install tokenizer dependencies:
+   ```bash
+   npm install js-tiktoken@latest @huggingface/transformers@^3.3.3 --prefix .opencode/plugin/vendor
+   ```
+
+## Usage
+
+### Basic Usage
+
+Run the context analysis command in any OpenCode session:
+
+```
+/context
+```
+
+This will display:
+- Session ID and model information
+- Total token count
+- Breakdown by category (system, user, assistant, tools, reasoning)
+- Top token contributors
+
+### Advanced Usage
+
+Limit the number of message entries to analyze:
+
+```
+/context limitMessages:5
+```
+
+Analyze a specific session:
+
+```
+/context sessionID:your-session-id
+```
+
+## Sample Output
+
+```
+Session abc123 · model claude-3.5-sonnet · total 15,432 tokens
+Breakdown — system 2,341 | user 4,567 | assistant 5,234 | tools 1,890 | reasoning 1,400
+Top contributors: User#3 4,100, Assistant#2 3,200, System#1 2,341
+```
+
+## Supported Models
+
+### OpenAI Models
+- GPT-4, GPT-4 Turbo, GPT-4o
+- GPT-3.5 Turbo
+- Text Embedding models
+
+### Anthropic Claude
+- Claude 3 (Opus, Sonnet, Haiku)
+- Claude 3.5 (Sonnet, Haiku)
+- Claude 3.7 Sonnet
+- Claude 4 (Opus, Sonnet)
+
+### Meta Llama
+- Llama 2, 3, 3.1, 3.2, 3.3, 4
+- Code Llama
+
+### Other Models
+- Mistral (Large, Small, Nemo)
+- DeepSeek (V2, V3, R1)
+- Google Gemma
+
+## Technical Details
+
+### Architecture
+
+The plugin consists of:
+
+- **Command Definition** (`.opencode/command/context.md`): Defines the `/context` slash command
+- **Plugin Implementation** (`.opencode/plugin/context-usage.ts`): Core TypeScript plugin with tokenization logic
+- **Installation Script** (`install.sh`): Automated dependency installation
+
+### Token Counting
+
+The plugin uses sophisticated tokenization strategies:
+
+1. **Model-Specific Tokenizers**: Uses the exact tokenizer for each model when available
+2. **Provider Fallbacks**: Falls back to provider-default tokenizers
+3. **Approximation**: Uses character-based estimation (÷4) as final fallback
+
+### Performance Features
+
+- **Caching**: Tokenizers are cached for performance
+- **Telemetry Integration**: Uses actual token usage from API responses when available
+- **Concurrent Processing**: Analyzes different message categories in parallel
+
+## Development
+
+### Project Structure
+
+```
+.
+├── .opencode/
+│   ├── command/
+│   │   └── context.md           # Command definition
+│   └── plugin/
+│       └── context-usage.ts     # Main plugin implementation
+├── install.sh                   # Dependency installer
+└── README.md                    # This file
+```
+
+### Building and Testing
+
+The plugin is written in TypeScript and runs directly in the OpenCode environment. No build step is required.
+
+To test locally:
+1. Install in a test OpenCode project
+2. Start a session and run `/context`
+3. Verify token analysis appears correctly
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is open source. See the repository for license details.
+
+## Support
+
+For issues, questions, or contributions:
+- Open an issue on GitHub
+- Check OpenCode documentation for plugin development
+- Review the source code for implementation details
+
+---
+
+**Made for [OpenCode](https://opencode.ai)** - Enhance your AI development workflow with detailed context analysis.
