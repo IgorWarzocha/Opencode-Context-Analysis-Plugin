@@ -1,0 +1,9 @@
+{
+  "name": "opencode-context-analysis-plugin",
+  "version": "1.0.0",
+  "description": "OpenCode plugin for detailed token usage analysis",
+  "type": "module",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.0.0"
+  }
+}

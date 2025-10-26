@@ -1,7 +1,9 @@
 import type { Plugin } from "@opencode-ai/plugin"
+import { tool } from "@opencode-ai/plugin"
 import path from "path"
 import fs from "fs/promises"
 import { fileURLToPath, pathToFileURL } from "url"
+import { z } from "zod/v4"
 
 const ENTRY_LIMIT = 3
 const vendorRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "vendor", "node_modules")
@@ -17,6 +19,7 @@ interface SessionMessageInfo {
   modelID?: string
   providerID?: string
   system?: string[]
+  tokens?: any
 }
 
 type SessionMessagePart =
@@ -50,10 +53,7 @@ type CategorySummary = {
   entries: CategoryEntry[]
 }
 
-type TokenizerSpec =
-  | { kind: "tiktoken"; model: string }
-  | { kind: "transformers"; hub: string }
-  | { kind: "approx" }
+type TokenizerSpec = { kind: "tiktoken"; model: string } | { kind: "transformers"; hub: string } | { kind: "approx" }
 
 interface TokenModel {
   name: string
@@ -76,9 +76,9 @@ interface ContextSummary {
 const openaiMap: Record<string, string> = {
   "gpt-5": "gpt-4o",
   "o4-mini": "gpt-4o",
-  "o3": "gpt-4o",
+  o3: "gpt-4o",
   "o3-mini": "gpt-4o",
-  "o1": "gpt-4o",
+  o1: "gpt-4o",
   "o1-pro": "gpt-4o",
   "gpt-4.1": "gpt-4o",
   "gpt-4.1-mini": "gpt-4o",
@@ -118,7 +118,7 @@ const transformersMap: Record<string, string> = {
   "mistral-small": "Xenova/mistral-tokenizer-v3",
   "mistral-nemo": "Xenova/Mistral-Nemo-Instruct-Tokenizer",
   "devstral-small": "Xenova/Mistral-Nemo-Instruct-Tokenizer",
-  "codestral": "Xenova/mistral-tokenizer-v3",
+  codestral: "Xenova/mistral-tokenizer-v3",
 }
 
 const providerDefaults: Record<string, TokenizerSpec> = {
@@ -134,59 +134,38 @@ const transformerCache = new Map<string, any>()
 let tiktokenModule: Promise<any> | undefined
 let transformersModule: Promise<any> | undefined
 
-export const ContextUsagePlugin: Plugin = async ({ Tool, z, client }) => {
-  const ContextUsage = Tool.define("context_usage", {
-    description: "Summarize token usage for the current session",
-    parameters: z
-      .object({
-        sessionID: z.string().optional(),
-        limitMessages: z.number().int().min(1).max(10).optional(),
-      })
-      .default({}),
-    async execute(args, ctx) {
-      const sessionID = args.sessionID ?? ctx.sessionID
-      if (!sessionID) throw new Error("No session ID available for context summary")
-
-      const response = await client.session.messages({ path: { id: sessionID } })
-      const messages: SessionMessage[] = ((response as any)?.data ?? response ?? []) as SessionMessage[]
-
-      if (!Array.isArray(messages) || messages.length === 0) {
-        return {
-          title: `Context usage for ${sessionID}`,
-          output: `Session ${sessionID} has no messages yet.`,
-        }
-      }
-
-      const tokenModel = resolveTokenModel(messages)
-      const summary = await buildContextSummary({
-        sessionID,
-        messages,
-        tokenModel,
-        entryLimit: args.limitMessages ?? ENTRY_LIMIT,
-      })
-
-      return {
-        title: `Context usage for ${sessionID}`,
-        output: formatSummary(summary),
-        metadata: {
-          sessionID,
-          model: summary.model.name,
-          totals: {
-            system: summary.categories.system.totalTokens,
-            user: summary.categories.user.totalTokens,
-            assistant: summary.categories.assistant.totalTokens,
-            tools: summary.categories.tools.totalTokens,
-            reasoning: summary.categories.reasoning.totalTokens,
-          },
-          totalTokens: summary.totalTokens,
-        },
-      }
-    },
-  })
-
+export const ContextUsagePlugin: Plugin = async ({ client }) => {
   return {
-    async "tool.register"(_input, { register }) {
-      register(ContextUsage)
+    tool: {
+      context_usage: tool({
+        description:
+          "Get detailed token usage analysis for the current session. When this tool is called, analyze the results and provide a concise summary rather than reproducing the visual output.",
+        args: {
+          sessionID: tool.schema.string().optional(),
+          limitMessages: tool.schema.number().int().min(1).max(10).optional(),
+        },
+        async execute(args, context) {
+          const sessionID = args.sessionID ?? context.sessionID
+          if (!sessionID) throw new Error("No session ID available for context summary")
+
+          const response = await client.session.messages({ path: { id: sessionID } })
+          const messages: SessionMessage[] = ((response as any)?.data ?? response ?? []) as SessionMessage[]
+
+          if (!Array.isArray(messages) || messages.length === 0) {
+            return `Session ${sessionID} has no messages yet.`
+          }
+
+          const tokenModel = resolveTokenModel(messages)
+          const summary = await buildContextSummary({
+            sessionID,
+            messages,
+            tokenModel,
+            entryLimit: args.limitMessages ?? ENTRY_LIMIT,
+          })
+
+          return formatSummary(summary)
+        },
+      }),
     },
   }
 }
@@ -263,9 +242,67 @@ function collectSystemPrompts(messages: SessionMessage[]): CategoryEntrySource[]
     }
   }
   return Array.from(prompts.values()).map((content, index) => ({
-    label: `System#${index + 1}`,
+    label: identifySystemPrompt(content, index + 1),
     content,
   }))
+}
+
+function identifySystemPrompt(content: string, index: number): string {
+  const lower = content.toLowerCase()
+
+  // More specific identification with length/content patterns
+  if (lower.includes("opencode") && lower.includes("cli") && content.length > 500) {
+    return "System#MainPrompt"
+  }
+  if (lower.includes("opencode") && lower.includes("cli") && content.length <= 500) {
+    return "System#ShortPrompt"
+  }
+  if (lower.includes("agent") && lower.includes("mode")) {
+    return "System#AgentMode"
+  }
+  if (lower.includes("permission") || lower.includes("allowed") || lower.includes("deny")) {
+    return "System#Permissions"
+  }
+  if (lower.includes("tool") && (lower.includes("rule") || lower.includes("guideline"))) {
+    return "System#ToolRules"
+  }
+  if (lower.includes("format") || lower.includes("style") || lower.includes("concise")) {
+    return "System#Formatting"
+  }
+  if (lower.includes("project") || lower.includes("repository") || lower.includes("codebase")) {
+    return "System#ProjectContext"
+  }
+  if (lower.includes("session") || lower.includes("context") || lower.includes("memory")) {
+    return "System#SessionMgmt"
+  }
+
+  // Check for file references
+  if (content.includes("@") && (content.includes(".md") || content.includes(".txt"))) {
+    return "System#FileRefs"
+  }
+
+  // Check for agent definitions
+  if (content.includes("name:") && content.includes("description:")) {
+    return "System#AgentDef"
+  }
+
+  // Check for coding guidelines
+  if (lower.includes("code") && (lower.includes("convention") || lower.includes("standard"))) {
+    return "System#CodeGuidelines"
+  }
+
+  // Distinguish by content length and patterns for similar prompts
+  if (lower.includes("opencode")) {
+    if (content.includes("```") || content.includes("examples")) {
+      return "System#MainWithExamples"
+    }
+    if (index === 1) return "System#Main-A"
+    if (index === 2) return "System#Main-B"
+    return `System#Main-${index}`
+  }
+
+  // Fallback to numbered
+  return `System#${index}`
 }
 
 function collectMessageTexts(messages: SessionMessage[], role: "user" | "assistant"): CategoryEntrySource[] {
@@ -282,17 +319,27 @@ function collectMessageTexts(messages: SessionMessage[], role: "user" | "assista
 }
 
 function collectToolOutputs(messages: SessionMessage[]): CategoryEntrySource[] {
-  const results: CategoryEntrySource[] = []
+  const toolOutputs = new Map<string, string>()
+
   for (const message of messages) {
     for (const part of message.parts) {
       if (part.type !== "tool") continue
-      if (part.state.status !== "completed") continue
-      const output = (part.state.output ?? "").toString().trim()
+      const state = (part as any).state
+      if (state?.status !== "completed") continue
+      const output = (state?.output ?? "").toString().trim()
       if (!output) continue
-      results.push({ label: `${part.tool || "tool"}`, content: output })
+      const toolName = (part as any).tool || "tool"
+
+      // Accumulate all outputs for each tool
+      const existing = toolOutputs.get(toolName) || ""
+      toolOutputs.set(toolName, existing + (existing ? "\n\n" : "") + output)
     }
   }
-  return results
+
+  return Array.from(toolOutputs.entries()).map(([toolName, content]) => ({
+    label: toolName,
+    content,
+  }))
 }
 
 function collectReasoningTexts(messages: SessionMessage[]): CategoryEntrySource[] {
@@ -301,7 +348,7 @@ function collectReasoningTexts(messages: SessionMessage[]): CategoryEntrySource[
   for (const message of messages) {
     for (const part of message.parts) {
       if (part.type !== "reasoning") continue
-      const text = (part.text ?? "").trim()
+      const text = ((part as any).text ?? "").toString().trim()
       if (!text) continue
       index += 1
       results.push({ label: `Reasoning#${index}`, content: text })
@@ -322,35 +369,36 @@ function extractText(parts: SessionMessagePart[]): string {
 function applyTokenTelemetry(summary: ContextSummary, messages: SessionMessage[]) {
   // Prefer the most recent assistant message with non-zero usage.
   const assistants = [...messages]
-    .filter((m) => m.info.role === "assistant" && (m as any).info?.tokens)
+    .filter((m) => m.info.role === "assistant" && m.info?.tokens)
     .map((m) => ({
       msg: m,
-      t: (m as any).info.tokens as any,
+      t: m.info.tokens as any,
     }))
 
-  const pick = assistants
-    .reverse()
-    .find(({ t }) =>
-      ((Number(t.input) || 0) + (Number(t.output) || 0) + (Number(t.reasoning) || 0) +
-        (Number(t.cache?.read) || 0) + (Number(t.cache?.write) || 0)) > 0,
-    )
-    ?? assistants.at(-1)
+  const pick =
+    assistants
+      .reverse()
+      .find(
+        ({ t }) =>
+          (Number(t.input) || 0) +
+            (Number(t.output) || 0) +
+            (Number(t.reasoning) || 0) +
+            (Number(t.cache?.read) || 0) +
+            (Number(t.cache?.write) || 0) >
+          0,
+      ) ?? assistants[assistants.length - 1]
 
   if (!pick) return
 
   const tokens: any = pick.t
 
   const promptTokens =
-    (Number(tokens.input) || 0) +
-    (Number(tokens.cache?.read) || 0) +
-    (Number(tokens.cache?.write) || 0)
+    (Number(tokens.input) || 0) + (Number(tokens.cache?.read) || 0) + (Number(tokens.cache?.write) || 0)
   const assistantTokens = Number(tokens.output) || 0
   const reasoningTokens = Number(tokens.reasoning) || 0
 
   const promptMeasured =
-    summary.categories.system.totalTokens +
-    summary.categories.user.totalTokens +
-    summary.categories.tools.totalTokens
+    summary.categories.system.totalTokens + summary.categories.user.totalTokens + summary.categories.tools.totalTokens
   scalePromptCategories(summary, promptTokens, promptMeasured)
 
   scaleCategory(summary.categories.assistant, assistantTokens, "Assistant output")
@@ -396,8 +444,8 @@ function scalePromptCategories(summary: ContextSummary, actual: number, measured
   }
   const diff = actual - accumulated
   if (Math.abs(diff) > 1e-6 && categories.length) {
-    categories[0].totalTokens += diff
-    if (categories[0].entries.length) categories[0].entries[0].tokens += diff
+    categories[0].totalTokens += Math.round(diff)
+    if (categories[0].entries.length) categories[0].entries[0].tokens += Math.round(diff)
   }
 }
 
@@ -418,15 +466,15 @@ function scaleCategory(category: CategorySummary, actual: number, fallbackLabel:
   category.totalTokens = scaled
   const diff = actual - scaled
   if (Math.abs(diff) > 1e-6 && category.entries.length) {
-    category.entries[0].tokens += diff
-    category.totalTokens += diff
+    category.entries[0].tokens += Math.round(diff)
+    category.totalTokens += Math.round(diff)
   }
 }
 
 function scaleEntries(entries: CategoryEntry[], factor: number) {
   let total = 0
   for (const entry of entries) {
-    entry.tokens *= factor
+    entry.tokens = Math.round(entry.tokens * factor)
     total += entry.tokens
   }
   return total
@@ -472,7 +520,10 @@ function resolveTransformersModel(modelID?: string, providerID?: string): TokenM
     return { name: modelID, spec: { kind: "transformers", hub: "Xenova/claude-tokenizer" } }
   }
   if (modelID?.startsWith("llama")) {
-    return { name: modelID, spec: { kind: "transformers", hub: transformersMap[modelID] ?? "Xenova/Meta-Llama-3.1-Tokenizer" } }
+    return {
+      name: modelID,
+      spec: { kind: "transformers", hub: transformersMap[modelID] ?? "Xenova/Meta-Llama-3.1-Tokenizer" },
+    }
   }
   if (modelID?.startsWith("mistral")) {
     return { name: modelID, spec: { kind: "transformers", hub: "Xenova/mistral-tokenizer-v3" } }
@@ -574,21 +625,63 @@ async function importFromVendor(pkg: string) {
 }
 
 function formatSummary(summary: ContextSummary): string {
-  const sys = summary.categories.system.totalTokens
-  const user = summary.categories.user.totalTokens
-  const assistant = summary.categories.assistant.totalTokens
-  const tools = summary.categories.tools.totalTokens
-  const reasoning = summary.categories.reasoning.totalTokens
+  const categories = [
+    { label: "SYSTEM", tokens: summary.categories.system.totalTokens },
+    { label: "USER", tokens: summary.categories.user.totalTokens },
+    { label: "ASSISTANT", tokens: summary.categories.assistant.totalTokens },
+    { label: "TOOLS", tokens: summary.categories.tools.totalTokens },
+    { label: "REASONING", tokens: summary.categories.reasoning.totalTokens },
+  ]
 
-  const firstLine = `Session ${summary.sessionID} · model ${summary.model.name} · total ${formatNumber(summary.totalTokens)} tokens`
-  const secondLine = `Breakdown — system ${formatNumber(sys)} | user ${formatNumber(user)} | assistant ${formatNumber(assistant)} | tools ${formatNumber(tools)} | reasoning ${formatNumber(reasoning)}`
+  const topEntries = collectTopEntries(summary, 10)
 
-  const topEntries = collectTopEntries(summary, 3)
-  const thirdLine = topEntries.length
-    ? `Top contributors: ${topEntries.map((item) => `${item.label} ${formatNumber(item.tokens)}`).join(", ")}`
-    : undefined
+  return formatVisualSummary(summary.sessionID, summary.model.name, summary.totalTokens, categories, topEntries)
+}
 
-  return [firstLine, secondLine, thirdLine].filter(Boolean).join("\n")
+function formatVisualSummary(
+  sessionID: string,
+  modelName: string,
+  totalTokens: number,
+  categories: Array<{ label: string; tokens: number }>,
+  topEntries: CategoryEntry[],
+): string {
+  const lines: string[] = []
+
+  // Header
+  lines.push(`Context Analysis: Session ${sessionID}`)
+  lines.push(``)
+
+  // Bar chart
+  const maxTokens = Math.max(...categories.map((c) => c.tokens), 1)
+  for (const category of categories) {
+    if (category.tokens === 0) continue
+    const percentage = ((category.tokens / totalTokens) * 100).toFixed(1)
+    const barWidth = Math.round((category.tokens / maxTokens) * 30)
+    const bar = "█".repeat(barWidth) + "░".repeat(Math.max(0, 30 - barWidth))
+    const label = category.label.padEnd(9)
+    const tokens = formatNumber(category.tokens).padStart(6)
+    const pct = percentage.padStart(5)
+    lines.push(`${label} ${bar} ${pct}% (${tokens})`)
+  }
+
+  lines.push(``)
+
+  // Total
+  lines.push(`Total: ${formatNumber(totalTokens)} tokens`)
+
+  if (topEntries.length > 0) {
+    lines.push(``)
+    lines.push(`Top Contributors:`)
+
+    for (const entry of topEntries) {
+      const percentage = ((entry.tokens / totalTokens) * 100).toFixed(1)
+      const label = `• ${entry.label}`.padEnd(16)
+      const tokens = `${formatNumber(entry.tokens)} tokens (${percentage}%)`
+      lines.push(`${label} ${tokens}`)
+    }
+  }
+
+  return lines.join("\n")
 }
 
 function collectTopEntries(summary: ContextSummary, limit: number): CategoryEntry[] {
@@ -615,9 +708,4 @@ function canonical(value?: string): string | undefined {
 function capitalize(value: string): string {
   if (!value) return value
   return value[0].toUpperCase() + value.slice(1)
-}
-
-type CategoryEntrySource = {
-  label: string
-  content: string
 }

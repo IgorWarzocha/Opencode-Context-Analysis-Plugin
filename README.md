@@ -15,21 +15,65 @@ A powerful OpenCode plugin that provides detailed token usage analysis for your 
 ### Quick Setup
 
 1. **Copy Plugin Files**
+
    ```bash
    cp -r .opencode /path/to/your/opencode/project/
    ```
 
 2. **Install Dependencies**
+
    ```bash
    bash install.sh /path/to/your/opencode/project
    ```
 
    Or install to current directory:
+
    ```bash
    bash install.sh .
    ```
 
 3. **Restart OpenCode** and the `/context` command will be available
+
+### Global Installation
+
+To make the `/context` command available across all OpenCode projects:
+
+1. **Install to Global Config Directory**
+
+   ```bash
+   cp -r .opencode ~/.config/opencode/
+   ```
+
+2. **Install Dependencies Globally**
+
+   ```bash
+   bash install.sh ~/.config/opencode/
+   ```
+
+3. **Verify Installation**
+
+   ```bash
+   ls ~/.config/opencode/command/context.md
+   ls ~/.config/opencode/plugin/context-usage.ts
+   ```
+
+4. **Restart OpenCode** - the `/context` command will now be available in every project
+
+### Installation Methods Summary
+
+| Method      | Scope          | Command Location      | Use Case                          |
+| ----------- | -------------- | --------------------- | --------------------------------- |
+| **Project** | Single project | `.opencode/`          | Project-specific context analysis |
+| **Global**  | All projects   | `~/.config/opencode/` | Universal access across projects  |
+
+### Verification
+
+After installation, the `/context` command should appear in OpenCode's command suggestions when you type `/`. Test it with:
+
+```bash
+/context                    # Current session (concise)
+/context detailed            # Current session (detailed)
+```
 
 ### Manual Installation
 
@@ -52,6 +96,50 @@ Run the context analysis command in any OpenCode session:
 ```
 
 This will display:
+
+- Session ID and model information
+- Total token count
+- Breakdown by category (system, user, assistant, tools, reasoning)
+- Top contributors with individual tool names
+- Intelligent system prompt identification
+
+### Advanced Usage
+
+Control output verbosity with flexible arguments:
+
+```
+/context                    # Concise summary (default)
+/context detailed            # Detailed summary
+/context short               # Short summary
+/context verbose             # Verbose summary
+/context "extremely detailed" # Custom verbosity
+/context "whatever you want"  # Fully flexible
+```
+
+**How it works:**
+
+- The `$ARGUMENTS` placeholder gets replaced directly in the command template
+- You can use any descriptive term: "short", "concise", "detailed", "verbose", "extremely detailed", etc.
+- The command adapts to whatever verbosity level you prefer
+- No predefined options - completely flexible and user-controlled
+
+Analyze a specific session:
+
+```
+/context sessionID:your-session-id
+```
+
+### Enhanced Features
+
+- **Individual Tool Tracking**: See exactly which tools (`read`, `bash`, `webfetch`, etc.) consume the most tokens
+- **Smart System Prompt Identification**: Automatically identifies and names system prompts (System#MainPrompt, System#Permissions, etc.)
+- **Accurate Token Counting**: Uses model-specific tokenizers for precise measurements
+- **Clean Visual Output**: Simplified display without ASCII table borders
+  /context
+
+```
+
+This will display:
 - Session ID and model information
 - Total token count
 - Breakdown by category (system, user, assistant, tools, reasoning)
@@ -62,21 +150,27 @@ This will display:
 Limit the number of message entries to analyze:
 
 ```
+
 /context limitMessages:5
+
 ```
 
 Analyze a specific session:
 
 ```
+
 /context sessionID:your-session-id
+
 ```
 
 ## Sample Output
 
 ```
+
 Session abc123 · model claude-3.5-sonnet · total 15,432 tokens
 Breakdown — system 2,341 | user 4,567 | assistant 5,234 | tools 1,890 | reasoning 1,400
 Top contributors: User#3 4,100, Assistant#2 3,200, System#1 2,341
+
 ```
 
 ## How It Works
@@ -134,14 +228,16 @@ The plugin analyzes your session in real-time by:
 ### Project Structure
 
 ```
+
 .
 ├── .opencode/
-│   ├── command/
-│   │   └── context.md           # Command definition
-│   └── plugin/
-│       └── context-usage.ts     # Main plugin implementation
-├── install.sh                   # Dependency installer
-└── README.md                    # This file
+│ ├── command/
+│ │ └── context.md # Command definition
+│ └── plugin/
+│ └── context-usage.ts # Main plugin implementation
+├── install.sh # Dependency installer
+└── README.md # This file
+
 ```
 
 ### Building and Testing
@@ -175,3 +271,4 @@ For issues, questions, or contributions:
 ---
 
 **Made for [OpenCode](https://opencode.ai)** - Enhance your AI development workflow with detailed context analysis.
+```
