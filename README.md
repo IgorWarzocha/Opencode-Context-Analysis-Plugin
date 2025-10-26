@@ -25,23 +25,23 @@ Ever wonder where all your AI tokens are going? This plugin gives you a clear, v
 3. **Restart OpenCode** and type `/context`
 
 That's it! You'll see a detailed breakdown like this:
-```
-Context Analysis: Session abc123
 
-SYSTEM    ███████████░░░░░░░░░░░░░░░ 15.2% (2,341)
-USER      ████████████████████░░░░░░░ 29.6% (4,567)
-ASSISTANT ████████████████████████████ 33.9% (5,234)
-TOOLS     ████████░░░░░░░░░░░░░░░░░░░░ 12.2% (1,890)
-REASONING █████░░░░░░░░░░░░░░░░░░░░░░░  9.1% (1,400)
+### No arguments:
 
-Total: 15,432 tokens
+<p align="center">
+<img width="100%" alt="image" src="https://github.com/user-attachments/assets/7967e6fa-e87d-4517-a247-61c8cf7fa60b" />
+</p>
 
-Top Contributors:
-• User#3           4,100 tokens (26.6%)
-• Assistant#2      3,200 tokens (20.7%)
-• System#MainPrompt 2,341 tokens (15.2%)
-```
+### /context extremely detailed:
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/2afb66d7-d4da-4d9b-9439-04fcfee94722"
+       alt="image"
+       style="width:49%; padding: 0 1%;" />
+  <img src="https://github.com/user-attachments/assets/a7473a0b-5e7c-467e-8d5b-c4ccb4064f93"
+       alt="image"
+       style="width:49%; padding: 0 1%;" />
+</p>
 
 
 ## 🛠️ Installation Options
