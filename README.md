@@ -42,13 +42,7 @@ Top Contributors:
 • System#MainPrompt 2,341 tokens (15.2%)
 ```
 
-## 📋 What You'll See
 
-- **Visual breakdown** of where your tokens go
-- **Top contributors** ranked by usage
-- **Individual tool tracking** (see exactly which tools cost the most)
-- **Session totals** and model information
-- **Smart categorization** of different content types
 
 ## 🛠️ Installation Options
 
@@ -166,143 +160,39 @@ If you prefer to set things up yourself:
    npm install js-tiktoken@latest @huggingface/transformers@^3.3.3 --prefix .opencode/plugin/vendor
    ```
 
-## Usage
 
-### Basic Usage
 
-Run the context analysis command in any OpenCode session:
+## 🔧 How It Works
 
-```
-/context
-```
+The plugin uses two main libraries for accurate token counting:
+- `js-tiktoken` - Official OpenAI tokenizer for GPT models
+- `@huggingface/transformers` - Hugging Face tokenizers for Claude, Llama, Mistral, etc.
 
-This will display:
+The `install.sh` script automatically installs these to a local `vendor` directory and sets up everything without affecting your main project. All token counting happens locally on your machine - no data is sent to external services.
 
-- Session ID and model information
-- Total token count
-- Breakdown by category (system, user, assistant, tools, reasoning)
-- Top contributors with individual tool names
-- Intelligent system prompt identification
+## 🛠️ Development
 
-### Advanced Usage
-
-Control output verbosity with flexible arguments:
+### Project Structure
 
 ```
-/context                    # Concise summary (default)
-/context detailed            # Detailed summary
-/context short               # Short summary
-/context verbose             # Verbose summary
-/context "extremely detailed" # Custom verbosity
-/context "whatever you want"  # Fully flexible
+.
+├── .opencode/
+│ ├── command/
+│ │ └── context.md # Command definition
+│ └── plugin/
+│ └── context-usage.ts # Main plugin implementation
+├── install.sh # Dependency installer
+└── README.md # This file
 ```
 
-**How it works:**
+### Building and Testing
 
-- The `$ARGUMENTS` placeholder gets replaced directly in the command template
-- You can use any descriptive term: "short", "concise", "detailed", "verbose", "extremely detailed", etc.
-- The command adapts to whatever verbosity level you prefer
-- No predefined options - completely flexible and user-controlled
+The plugin is written in TypeScript and runs directly in the OpenCode environment. No build step is required.
 
-Analyze a specific session:
-
-```
-/context sessionID:your-session-id
-```
-
-### Enhanced Features
-
-- **Individual Tool Tracking**: See exactly which tools (`read`, `bash`, `webfetch`, etc.) consume the most tokens
-- **Smart System Prompt Identification**: Automatically identifies and names system prompts (System#MainPrompt, System#Permissions, etc.)
-- **Accurate Token Counting**: Uses model-specific tokenizers for precise measurements
-- **Clean Visual Output**: Simplified display without ASCII table borders
-  /context
-
-```
-
-This will display:
-- Session ID and model information
-- Total token count
-- Breakdown by category (system, user, assistant, tools, reasoning)
-- Top token contributors
-
-### Advanced Usage
-
-Limit the number of message entries to analyze:
-
-```
-
-/context limitMessages:5
-
-```
-
-Analyze a specific session:
-
-```
-
-/context sessionID:your-session-id
-
-```
-
-## Sample Output
-
-```
-
-Session abc123 · model claude-3.5-sonnet · total 15,432 tokens
-Breakdown — system 2,341 | user 4,567 | assistant 5,234 | tools 1,890 | reasoning 1,400
-Top contributors: User#3 4,100, Assistant#2 3,200, System#1 2,341
-
-```
-
-## How It Works
-
-### Tokenization Engine
-
-The plugin uses a sophisticated multi-tier tokenization approach leveraging Hugging Face Transformers:
-
-**Hugging Face Integration**: The core tokenization is powered by `@huggingface/transformers`, which provides access to the exact tokenizers used by each model family. This ensures accurate token counting that matches what the actual AI models see.
-
-**Model Detection**: The plugin automatically detects the model being used in your session and selects the appropriate tokenizer from Hugging Face Hub or falls back to provider-specific defaults.
-
-**Tiktoken Support**: For OpenAI models, the plugin uses `js-tiktoken` which provides the official OpenAI tokenization compatible with GPT models.
-
-**Smart Fallbacks**: When specific tokenizers aren't available, the plugin uses intelligent fallbacks based on model families and providers, ensuring you always get meaningful token estimates.
-
-## Technical Details
-
-### Architecture
-
-The plugin consists of:
-
-- **Command Definition** (`.opencode/command/context.md`): Defines the `/context` slash command
-- **Plugin Implementation** (`.opencode/plugin/context-usage.ts`): Core TypeScript plugin with tokenization logic
-- **Installation Script** (`install.sh`): Automated dependency installation
-
-### Token Counting Strategy
-
-The plugin implements a hierarchical tokenization approach:
-
-1. **Exact Model Matching**: Loads the specific tokenizer from Hugging Face Hub that corresponds to your model (e.g., `Xenova/claude-tokenizer` for Claude models, `Xenova/Meta-Llama-3.1-Tokenizer` for Llama)
-
-2. **Provider-Based Fallbacks**: When exact model tokenizers aren't found, falls back to provider defaults (Anthropic → Claude tokenizer, Meta → Llama tokenizer, etc.)
-
-3. **Tiktoken Integration**: OpenAI models use the official `js-tiktoken` library with model-specific encodings (`gpt-4o`, `gpt-3.5-turbo`, etc.)
-
-4. **Character-Based Estimation**: Final fallback uses approximate token counting (text length ÷ 4) when tokenizers fail to load
-
-### Real-Time Analysis
-
-The plugin analyzes your session in real-time by:
-- Extracting all message content by type (system prompts, user input, assistant responses, tool outputs, reasoning traces)
-- Applying the appropriate tokenizer to each content piece
-- Reconciling with actual API token usage when available through OpenCode's telemetry
-- Providing breakdown and identifying the highest token consumers
-
-### Performance Features
-
-- **Caching**: Tokenizers are cached for performance
-- **Telemetry Integration**: Uses actual token usage from API responses when available
-- **Concurrent Processing**: Analyzes different message categories in parallel
+To test locally:
+1. Install in a test OpenCode project
+2. Start a session and run `/context`
+3. Verify token analysis appears correctly
 
 ## Development
 
@@ -352,4 +242,3 @@ For issues, questions, or contributions:
 ---
 
 **Made for [OpenCode](https://opencode.ai)** - Enhance your AI development workflow with detailed context analysis.
-```
