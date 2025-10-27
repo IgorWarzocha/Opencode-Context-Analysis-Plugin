@@ -4,6 +4,8 @@ import path from "path"
 import fs from "fs/promises"
 import { fileURLToPath, pathToFileURL } from "url"
 import { z } from "zod/v4"
+import type { TokenModel } from "./tokenizer-registry.mjs"
+import { resolveTokenModel, TokenizerResolutionError } from "./tokenizer-registry.mjs"
 
 const ENTRY_LIMIT = 3
 const vendorRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "vendor", "node_modules")
@@ -53,13 +55,6 @@ type CategorySummary = {
   entries: CategoryEntry[]
 }
 
-type TokenizerSpec = { kind: "tiktoken"; model: string } | { kind: "transformers"; hub: string } | { kind: "approx" }
-
-interface TokenModel {
-  name: string
-  spec: TokenizerSpec
-}
-
 interface ContextSummary {
   sessionID: string
   model: TokenModel
@@ -71,62 +66,6 @@ interface ContextSummary {
     reasoning: CategorySummary
   }
   totalTokens: number
-}
-
-const openaiMap: Record<string, string> = {
-  "gpt-5": "gpt-4o",
-  "o4-mini": "gpt-4o",
-  o3: "gpt-4o",
-  "o3-mini": "gpt-4o",
-  o1: "gpt-4o",
-  "o1-pro": "gpt-4o",
-  "gpt-4.1": "gpt-4o",
-  "gpt-4.1-mini": "gpt-4o",
-  "gpt-4o": "gpt-4o",
-  "gpt-4o-mini": "gpt-4o-mini",
-  "gpt-4-turbo": "gpt-4",
-  "gpt-4": "gpt-4",
-  "gpt-3.5-turbo": "gpt-3.5-turbo",
-  "text-embedding-3-large": "text-embedding-3-large",
-  "text-embedding-3-small": "text-embedding-3-small",
-  "text-embedding-ada-002": "text-embedding-ada-002",
-}
-
-const transformersMap: Record<string, string> = {
-  "claude-opus-4": "Xenova/claude-tokenizer",
-  "claude-sonnet-4": "Xenova/claude-tokenizer",
-  "claude-3.7-sonnet": "Xenova/claude-tokenizer",
-  "claude-3.5-sonnet": "Xenova/claude-tokenizer",
-  "claude-3.5-haiku": "Xenova/claude-tokenizer",
-  "claude-3-opus": "Xenova/claude-tokenizer",
-  "claude-3-sonnet": "Xenova/claude-tokenizer",
-  "claude-3-haiku": "Xenova/claude-tokenizer",
-  "claude-2.1": "Xenova/claude-tokenizer",
-  "claude-2.0": "Xenova/claude-tokenizer",
-  "claude-instant-1.2": "Xenova/claude-tokenizer",
-  "llama-4": "Xenova/llama4-tokenizer",
-  "llama-3.3": "unsloth/Llama-3.3-70B-Instruct",
-  "llama-3.2": "Xenova/Llama-3.2-Tokenizer",
-  "llama-3.1": "Xenova/Meta-Llama-3.1-Tokenizer",
-  "llama-3": "Xenova/llama3-tokenizer-new",
-  "llama-2": "Xenova/llama2-tokenizer",
-  "code-llama": "Xenova/llama-code-tokenizer",
-  "deepseek-r1": "deepseek-ai/DeepSeek-R1",
-  "deepseek-v3": "deepseek-ai/DeepSeek-V3",
-  "deepseek-v2": "deepseek-ai/DeepSeek-V2",
-  "mistral-large": "Xenova/mistral-tokenizer-v3",
-  "mistral-small": "Xenova/mistral-tokenizer-v3",
-  "mistral-nemo": "Xenova/Mistral-Nemo-Instruct-Tokenizer",
-  "devstral-small": "Xenova/Mistral-Nemo-Instruct-Tokenizer",
-  codestral: "Xenova/mistral-tokenizer-v3",
-}
-
-const providerDefaults: Record<string, TokenizerSpec> = {
-  anthropic: { kind: "transformers", hub: "Xenova/claude-tokenizer" },
-  meta: { kind: "transformers", hub: "Xenova/Meta-Llama-3.1-Tokenizer" },
-  mistral: { kind: "transformers", hub: "Xenova/mistral-tokenizer-v3" },
-  deepseek: { kind: "transformers", hub: "deepseek-ai/DeepSeek-V3" },
-  google: { kind: "transformers", hub: "google/gemma-2-9b-it" },
 }
 
 const tiktokenCache = new Map<string, any>()
@@ -155,7 +94,15 @@ export const ContextUsagePlugin: Plugin = async ({ client }) => {
             return `Session ${sessionID} has no messages yet.`
           }
 
-          const tokenModel = resolveTokenModel(messages)
+          let tokenModel: TokenModel
+          try {
+            tokenModel = await resolveTokenModel(messages)
+          } catch (error) {
+            if (error instanceof TokenizerResolutionError) {
+              return formatTokenizerResolutionError(error, sessionID)
+            }
+            throw error
+          }
           const summary = await buildContextSummary({
             sessionID,
             messages,
@@ -480,65 +427,6 @@ function scaleEntries(entries: CategoryEntry[], factor: number) {
   return total
 }
 
-function resolveTokenModel(messages: SessionMessage[]): TokenModel {
-  for (const message of [...messages].reverse()) {
-    const id = canonical(message.info.modelID)
-    const provider = canonical(message.info.providerID)
-
-    const openaiMatch = resolveOpenAIModel(id, provider)
-    if (openaiMatch) return openaiMatch
-
-    const transformerMatch = resolveTransformersModel(id, provider)
-    if (transformerMatch) return transformerMatch
-  }
-
-  return {
-    name: "approx",
-    spec: { kind: "approx" },
-  }
-}
-
-function resolveOpenAIModel(modelID?: string, providerID?: string): TokenModel | undefined {
-  if (providerID === "openai" || providerID === "opencode" || providerID === "azure") {
-    const mapped = mapOpenAI(modelID)
-    return { name: modelID ?? mapped, spec: { kind: "tiktoken", model: mapped } }
-  }
-  if (modelID && openaiMap[modelID]) {
-    return { name: modelID, spec: { kind: "tiktoken", model: openaiMap[modelID] } }
-  }
-  return undefined
-}
-
-function resolveTransformersModel(modelID?: string, providerID?: string): TokenModel | undefined {
-  if (modelID && transformersMap[modelID]) {
-    return { name: modelID, spec: { kind: "transformers", hub: transformersMap[modelID] } }
-  }
-  if (providerID && providerDefaults[providerID]) {
-    return { name: modelID ?? providerID, spec: providerDefaults[providerID] }
-  }
-  if (modelID?.startsWith("claude")) {
-    return { name: modelID, spec: { kind: "transformers", hub: "Xenova/claude-tokenizer" } }
-  }
-  if (modelID?.startsWith("llama")) {
-    return {
-      name: modelID,
-      spec: { kind: "transformers", hub: transformersMap[modelID] ?? "Xenova/Meta-Llama-3.1-Tokenizer" },
-    }
-  }
-  if (modelID?.startsWith("mistral")) {
-    return { name: modelID, spec: { kind: "transformers", hub: "Xenova/mistral-tokenizer-v3" } }
-  }
-  if (modelID?.startsWith("deepseek")) {
-    return { name: modelID, spec: { kind: "transformers", hub: "deepseek-ai/DeepSeek-V3" } }
-  }
-  return undefined
-}
-
-function mapOpenAI(modelID?: string): string {
-  if (!modelID) return "cl100k_base"
-  return openaiMap[modelID] ?? modelID
-}
-
 async function countTokens(content: string, model: TokenModel): Promise<number> {
   if (!content.trim()) return 0
   if (model.spec.kind === "approx") {
@@ -701,8 +589,24 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US").format(value)
 }
 
-function canonical(value?: string): string | undefined {
-  return value?.split("/").pop()?.toLowerCase().trim()
+function formatTokenizerResolutionError(error: TokenizerResolutionError, sessionID: string): string {
+  const lines = [
+    `Unable to resolve a tokenizer for session ${sessionID}.`,
+    error.message,
+  ]
+
+  if (error.models.length > 0) {
+    lines.push(`Models considered: ${error.models.join(", ")}`)
+  }
+  if (error.providers.length > 0) {
+    lines.push(`Providers observed: ${error.providers.join(", ")}`)
+  }
+
+  lines.push(
+    "Install or update vendor tokenizers by running ./install.sh (optionally with a target directory).",
+  )
+
+  return lines.filter(Boolean).join("\n")
 }
 
 function capitalize(value: string): string {
