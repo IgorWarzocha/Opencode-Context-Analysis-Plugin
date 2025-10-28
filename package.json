@@ -4,6 +4,6 @@
   "description": "OpenCode plugin for detailed token usage analysis",
   "type": "module",
   "dependencies": {
-    "@opencode-ai/plugin": "^1.0.0"
+    "@opencode-ai/plugin": "latest"
   }
 }

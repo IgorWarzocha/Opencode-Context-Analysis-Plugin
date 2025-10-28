@@ -10,16 +10,18 @@ Ever wonder where all your AI tokens are going? This plugin gives you a clear, v
 - **Smart Analysis**: Automatically identifies different types of content (system prompts, user messages, tools, etc.)
 - **Works Everywhere**: Compatible with OpenAI, Claude, Llama, Mistral, DeepSeek, and more
 
-## 🚀 Quick Start (3 Steps)
+## 🚀 Quick Start (2 Steps)
 
-1. **Copy to your project**
+1. **Clone the plugin**
+
    ```bash
-   cp -r .opencode /path/to/your/opencode/project/
+   git clone https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin.git
    ```
 
-2. **Install dependencies**
+2. **Copy .opencode folder to your project**
+
    ```bash
-   bash install.sh /path/to/your/opencode/project
+   cp -r Opencode-Context-Analysis-Plugin/.opencode ./
    ```
 
 3. **Restart OpenCode** and type `/context`
@@ -45,45 +47,40 @@ That's it! You'll see a detailed breakdown like this:
        style="width:49%; padding: 0 1%;" />
 </p>
 
-
 ## 🛠️ Installation Options
 
 ### For a Single Project
 
-1. **Copy Plugin Files**
+1. **Clone the plugin**
 
    ```bash
-   cp -r .opencode /path/to/your/opencode/project/
+   git clone https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin.git
    ```
 
-2. **Install Dependencies**
+2. **Copy .opencode folder to your project**
 
    ```bash
-   bash install.sh /path/to/your/opencode/project
+   cp -r Opencode-Context-Analysis-Plugin/.opencode ./
    ```
 
-   Or install to current directory:
+3. **Restart OpenCode** - `/context` command will be available
 
-   ```bash
-   bash install.sh .
-   ```
-
-3. **Restart OpenCode** and the `/context` command will be available
-
-**Verify it worked**: Type `/` in OpenCode and you should see `/context` in the suggestions.
+**Verify it worked**: Type `/` in OpenCode and you should see `/context` in suggestions.
 
 ### For All Projects (Global)
 
-Want `/context` available everywhere? Install it globally:
+Want `/context` available everywhere? Copy the plugin to your global OpenCode config:
 
-1. **Copy to global config**
+1. **Clone the plugin** (if you haven't already)
+
    ```bash
-   cp -r .opencode ~/.config/opencode/
+   git clone https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin.git
    ```
 
-2. **Install globally**
+2. **Copy .opencode folder to global config location**
+
    ```bash
-   bash install.sh ~/.config/opencode/
+   cp -r Opencode-Context-Analysis-Plugin/.opencode ~/.config/opencode/
    ```
 
 3. **Restart OpenCode** - `/context` will work in any project
@@ -92,16 +89,16 @@ Want `/context` available everywhere? Install it globally:
 
 ### Installation Summary
 
-| Method      | Scope          | Command Location      | Use Case                          |
-| ----------- | -------------- | --------------------- | --------------------------------- |
-| **Project** | Single project | `.opencode/`          | Project-specific context analysis |
-| **Global**  | All projects   | `~/.config/opencode/` | Universal access across projects  |
+| Method      | Scope          | Location                        | Use Case                          |
+| ----------- | -------------- | ------------------------------- | --------------------------------- |
+| **Project** | Single project | `your-project/.opencode/`       | Project-specific context analysis |
+| **Global**  | All projects   | `~/.config/opencode/.opencode/` | Universal access across projects  |
 
 ### Troubleshooting
 
-**Permission denied**: Run `chmod +x install.sh` first
-**Command not found**: Make sure you're in the right directory
 **Plugin not loading**: Check that `.opencode/plugin/context-usage.ts` exists
+**Command not found**: Make sure you copied the `.opencode` folder to your project root
+**Git clone failed**: Check your internet connection and GitHub access
 
 ### Quick Test
 
@@ -115,13 +112,15 @@ After installation, type `/` in OpenCode and you should see `/context` in the su
 ## 🔧 How It Works (The Tech Stuff)
 
 **Dependencies**: The plugin uses two main libraries for accurate token counting:
+
 - `js-tiktoken` - Official OpenAI tokenizer for GPT models
 - `@huggingface/transformers` - Hugging Face tokenizers for Claude, Llama, Mistral, etc.
 
-**Installation Process**: The `install.sh` script automatically:
-1. Installs these tokenizer libraries to a local `vendor` directory
-2. Sets up the plugin files in the right locations
-3. Ensures everything works without affecting your main project
+**Installation Process**: The plugin automatically handles tokenizer dependencies when you first use it:
+
+1. Downloads tokenizer libraries to a local `vendor` directory
+2. Sets up everything without affecting your main project
+3. All token counting happens locally on your machine
 
 **Privacy**: All token counting happens locally on your machine. No data is sent to external services.
 
@@ -139,6 +138,7 @@ After installation, type `/` in OpenCode and you should see `/context` in the su
 ### Advanced Options
 
 **Custom verbosity** - Use any description you want:
+
 ```bash
 /context "extremely detailed"  # Maximum detail
 /context "just the basics"     # Minimal info
@@ -146,11 +146,13 @@ After installation, type `/` in OpenCode and you should see `/context` in the su
 ```
 
 **Specific sessions**:
+
 ```bash
 /context sessionID:your-session-id
 ```
 
 **Limit analysis depth**:
+
 ```bash
 /context limitMessages:5    # Only analyze last 5 messages
 ```
@@ -166,21 +168,20 @@ After installation, type `/` in OpenCode and you should see `/context` in the su
 
 If you prefer to set things up yourself:
 
-1. Copy the `.opencode` directory to your OpenCode project
+1. Clone the plugin and copy `.opencode` directory to your OpenCode project
 2. Install tokenizer dependencies manually:
    ```bash
    npm install js-tiktoken@latest @huggingface/transformers@^3.3.3 --prefix .opencode/plugin/vendor
    ```
 
-
-
 ## 🔧 How It Works
 
 The plugin uses two main libraries for accurate token counting:
+
 - `js-tiktoken` - Official OpenAI tokenizer for GPT models
 - `@huggingface/transformers` - Hugging Face tokenizers for Claude, Llama, Mistral, etc.
 
-The `install.sh` script automatically installs these to a local `vendor` directory and sets up everything without affecting your main project. All token counting happens locally on your machine - no data is sent to external services.
+The plugin automatically handles tokenizer dependencies when first used - no installation script needed. All token counting happens locally on your machine - no data is sent to external services.
 
 ## 🛠️ Development
 
@@ -193,7 +194,6 @@ The `install.sh` script automatically installs these to a local `vendor` directo
 │ │ └── context.md # Command definition
 │ └── plugin/
 │ └── context-usage.ts # Main plugin implementation
-├── install.sh # Dependency installer
 └── README.md # This file
 ```
 
@@ -202,6 +202,7 @@ The `install.sh` script automatically installs these to a local `vendor` directo
 The plugin is written in TypeScript and runs directly in the OpenCode environment. No build step is required.
 
 To test locally:
+
 1. Install in a test OpenCode project
 2. Start a session and run `/context`
 3. Verify token analysis appears correctly
@@ -228,6 +229,7 @@ To test locally:
 The plugin is written in TypeScript and runs directly in the OpenCode environment. No build step is required.
 
 To test locally:
+
 1. Install in a test OpenCode project
 2. Start a session and run `/context`
 3. Verify token analysis appears correctly
@@ -247,6 +249,7 @@ This project is open source. See the repository for license details.
 ## Support
 
 For issues, questions, or contributions:
+
 - Open an issue on GitHub
 - Check OpenCode documentation for plugin development
 - Review the source code for implementation details
