@@ -24,6 +24,8 @@ Ever wonder where all your AI tokens are going? This plugin gives you a clear, v
 
 3. **Restart OpenCode** and type `/context`
 
+> **Quick Installation**: Just paste this entire README into OpenCode and ask it to install the plugin for you!
+
 That's it! You'll see a detailed breakdown like this:
 
 ### No arguments:
@@ -68,6 +70,8 @@ That's it! You'll see a detailed breakdown like this:
 
 3. **Restart OpenCode** and the `/context` command will be available
 
+**Verify it worked**: Type `/` in OpenCode and you should see `/context` in the suggestions.
+
 ### For All Projects (Global)
 
 Want `/context` available everywhere? Install it globally:
@@ -84,12 +88,20 @@ Want `/context` available everywhere? Install it globally:
 
 3. **Restart OpenCode** - `/context` will work in any project
 
+**Note**: Creates `~/.config/opencode/` if it doesn't exist.
+
 ### Installation Summary
 
 | Method      | Scope          | Command Location      | Use Case                          |
 | ----------- | -------------- | --------------------- | --------------------------------- |
 | **Project** | Single project | `.opencode/`          | Project-specific context analysis |
 | **Global**  | All projects   | `~/.config/opencode/` | Universal access across projects  |
+
+### Troubleshooting
+
+**Permission denied**: Run `chmod +x install.sh` first
+**Command not found**: Make sure you're in the right directory
+**Plugin not loading**: Check that `.opencode/plugin/context-usage.ts` exists
 
 ### Quick Test
 
