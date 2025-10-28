@@ -13,13 +13,11 @@ Ever wonder where all your AI tokens are going? This plugin gives you a clear, v
 ## 🚀 Quick Start (2 Steps)
 
 1. **Clone the plugin**
-
    ```bash
    git clone https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin.git
    ```
 
 2. **Copy .opencode folder to your project**
-
    ```bash
    cp -r Opencode-Context-Analysis-Plugin/.opencode ./
    ```
@@ -52,13 +50,11 @@ That's it! You'll see a detailed breakdown like this:
 ### For a Single Project
 
 1. **Clone the plugin**
-
    ```bash
    git clone https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin.git
    ```
 
 2. **Copy .opencode folder to your project**
-
    ```bash
    cp -r Opencode-Context-Analysis-Plugin/.opencode ./
    ```
@@ -72,13 +68,11 @@ That's it! You'll see a detailed breakdown like this:
 Want `/context` available everywhere? Copy the plugin to your global OpenCode config:
 
 1. **Clone the plugin** (if you haven't already)
-
    ```bash
    git clone https://github.com/IgorWarzocha/Opencode-Context-Analysis-Plugin.git
    ```
 
 2. **Copy .opencode folder to global config location**
-
    ```bash
    cp -r Opencode-Context-Analysis-Plugin/.opencode ~/.config/opencode/
    ```
@@ -100,30 +94,6 @@ Want `/context` available everywhere? Copy the plugin to your global OpenCode co
 **Command not found**: Make sure you copied the `.opencode` folder to your project root
 **Git clone failed**: Check your internet connection and GitHub access
 
-### Quick Test
-
-After installation, type `/` in OpenCode and you should see `/context` in the suggestions. Try it:
-
-```bash
-/context                    # Basic analysis
-/context detailed            # More detailed view
-```
-
-## 🔧 How It Works (The Tech Stuff)
-
-**Dependencies**: The plugin uses two main libraries for accurate token counting:
-
-- `js-tiktoken` - Official OpenAI tokenizer for GPT models
-- `@huggingface/transformers` - Hugging Face tokenizers for Claude, Llama, Mistral, etc.
-
-**Installation Process**: The plugin automatically handles tokenizer dependencies when you first use it:
-
-1. Downloads tokenizer libraries to a local `vendor` directory
-2. Sets up everything without affecting your main project
-3. All token counting happens locally on your machine
-
-**Privacy**: All token counting happens locally on your machine. No data is sent to external services.
-
 ## 📖 Usage Guide
 
 ### Basic Commands
@@ -138,7 +108,6 @@ After installation, type `/` in OpenCode and you should see `/context` in the su
 ### Advanced Options
 
 **Custom verbosity** - Use any description you want:
-
 ```bash
 /context "extremely detailed"  # Maximum detail
 /context "just the basics"     # Minimal info
@@ -146,13 +115,11 @@ After installation, type `/` in OpenCode and you should see `/context` in the su
 ```
 
 **Specific sessions**:
-
 ```bash
 /context sessionID:your-session-id
 ```
 
 **Limit analysis depth**:
-
 ```bash
 /context limitMessages:5    # Only analyze last 5 messages
 ```
@@ -164,24 +131,27 @@ After installation, type `/` in OpenCode and you should see `/context` in the su
 - **Your conversation patterns** - See if you're writing long prompts or getting long responses
 - **Reasoning costs** - For models that support it, see how much reasoning tokens cost
 
+## 🔧 How It Works
+
+**Dependencies**: The plugin uses two main libraries for accurate token counting:
+- `js-tiktoken` - Official OpenAI tokenizer for GPT models
+- `@huggingface/transformers` - Hugging Face tokenizers for Claude, Llama, Mistral, etc.
+
+**Installation Process**: The plugin automatically handles tokenizer dependencies when you first use it:
+1. Downloads tokenizer libraries to a local `vendor` directory
+2. Sets up everything without affecting your main project
+3. All token counting happens locally on your machine
+
+**Privacy**: All token counting happens locally on your machine. No data is sent to external services.
+
 ### Manual Installation (Advanced)
 
 If you prefer to set things up yourself:
-
 1. Clone the plugin and copy `.opencode` directory to your OpenCode project
 2. Install tokenizer dependencies manually:
    ```bash
    npm install js-tiktoken@latest @huggingface/transformers@^3.3.3 --prefix .opencode/plugin/vendor
    ```
-
-## 🔧 How It Works
-
-The plugin uses two main libraries for accurate token counting:
-
-- `js-tiktoken` - Official OpenAI tokenizer for GPT models
-- `@huggingface/transformers` - Hugging Face tokenizers for Claude, Llama, Mistral, etc.
-
-The plugin automatically handles tokenizer dependencies when first used - no installation script needed. All token counting happens locally on your machine - no data is sent to external services.
 
 ## 🛠️ Development
 
@@ -202,34 +172,6 @@ The plugin automatically handles tokenizer dependencies when first used - no ins
 The plugin is written in TypeScript and runs directly in the OpenCode environment. No build step is required.
 
 To test locally:
-
-1. Install in a test OpenCode project
-2. Start a session and run `/context`
-3. Verify token analysis appears correctly
-
-## Development
-
-### Project Structure
-
-```
-
-.
-├── .opencode/
-│ ├── command/
-│ │ └── context.md # Command definition
-│ └── plugin/
-│ └── context-usage.ts # Main plugin implementation
-├── install.sh # Dependency installer
-└── README.md # This file
-
-```
-
-### Building and Testing
-
-The plugin is written in TypeScript and runs directly in the OpenCode environment. No build step is required.
-
-To test locally:
-
 1. Install in a test OpenCode project
 2. Start a session and run `/context`
 3. Verify token analysis appears correctly
@@ -249,7 +191,6 @@ This project is open source. See the repository for license details.
 ## Support
 
 For issues, questions, or contributions:
-
 - Open an issue on GitHub
 - Check OpenCode documentation for plugin development
 - Review the source code for implementation details
